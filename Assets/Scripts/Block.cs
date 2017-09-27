@@ -11,6 +11,12 @@ public class Block : MonoBehaviour {
 		Blue
 	}
 
+	public enum MoveType {
+		None,
+		Fast,
+		Instant
+	}
+
 	public GameObject spriteObject;
 	SpriteRenderer mainSprite;
 
@@ -20,7 +26,7 @@ public class Block : MonoBehaviour {
 	public int row, col;
 	Vector3 targetPos;
 	public bool moving = true;
-	public bool firstMove = true;
+	MoveType moveType = MoveType.None;
 
 	byte alpha = 255;
 
@@ -35,20 +41,19 @@ public class Block : MonoBehaviour {
 		UpdateVisual();
 	}
 
-	public void SetPositionAndSitStill(Vector3 pos){
-		transform.localPosition = pos;
-		targetPos = pos;
-	}
-
-	public void SetLocation(int row, int col, bool firstMove = false){
+	public void SetLocation(int row, int col, MoveType moveType = MoveType.None){
 		this.row = row;
 		this.col = col;
 		targetPos = new Vector3(col, row, 0);
-		this.firstMove = firstMove;
+		this.moveType = moveType;
+
+		if(moveType == MoveType.Instant){
+			transform.localPosition = targetPos;
+		}
 	}
 
 	public void Dim(){
-		alpha = 100;
+		alpha = 180;
 		UpdateVisual();
 	}
 
@@ -85,8 +90,14 @@ public class Block : MonoBehaviour {
 		}
 
 		float speed = 5;
-		if(firstMove){
+
+		switch(moveType){
+		case MoveType.Fast:
 			speed = 30;
+			break;
+		case MoveType.Instant:
+			speed = 0; // Should already be there
+			break;
 		}
 
 		transform.localPosition = Vector3.MoveTowards(transform.localPosition, targetPos, speed * Time.deltaTime);

@@ -4,11 +4,8 @@ using UnityEngine;
 
 public class Board : MonoBehaviour {
 
-	public static Board board {
-		get {
-			// TODO cache
-			return GameObject.FindObjectOfType<Board>();
-		}
+	public static Board instance {
+		get; set;
 	}
 
 	public GameObject blockPrefab;
@@ -21,6 +18,10 @@ public class Board : MonoBehaviour {
 
 	Block[,] blocks;
 
+	Board(){
+		instance = this;
+	}
+
 	Block CreateBlock(Block.Type type){
 		GameObject blockObject = GameObject.Instantiate(blockPrefab);
 		Block block = blockObject.GetComponent<Block>();
@@ -32,7 +33,12 @@ public class Board : MonoBehaviour {
 	}
 
 	void SetBlockPosition(Block block, int row, int col, bool firstMove = false){
-		block.SetLocation(row, col, firstMove);
+		Block.MoveType moveType = Block.MoveType.None;
+		if(firstMove){
+			moveType = Block.MoveType.Fast;
+		}
+
+		block.SetLocation(row, col, moveType);
 		blocks[row, col] = block;
 	}
 
