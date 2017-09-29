@@ -89,11 +89,11 @@ public class Block : MonoBehaviour {
 			moving = false;
 		}
 
-		float speed = 5;
+		float speed = 6;
 
 		switch(moveType){
 		case MoveType.Fast:
-			speed = 30;
+			speed = 60;
 			break;
 		case MoveType.Instant:
 			speed = 0; // Should already be there

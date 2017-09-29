@@ -21,6 +21,56 @@ public class Board : MonoBehaviour {
 	Board(){
 		instance = this;
 	}
+		
+	void Start () {
+		blocks = new Block[height, width];
+
+		transform.localPosition += new Vector3(.5f - width/2.0f, .5f - height/2.0f, 0);
+
+		midLine.transform.localScale = new Vector3(width, .02f, 1);
+		midLine.transform.localPosition = new Vector3(width/2, height/2 - .5f, 0);
+
+		Populate();
+	}
+
+	public bool InFailureState(){
+		for(int i = 0; i < width; i++){
+			if(blocks[0, i] != null || blocks[height-1, i] != null)
+				return true;
+		}
+		return false;
+	}
+
+	void Populate(){
+		int rowsToPopulate = 8;
+		for(int dir = -1; dir <= 1; dir += 2){
+			for(int i = 0; i < rowsToPopulate / 2; i++){
+				int row = height / 2 + dir * i;
+				if(dir == -1)
+					row--;
+
+				for(int j = 0; j < width; j++){
+
+					int numGroups = FindLargeGroups().Count;
+					Block block = null;
+
+					for(int k = 0; k < 100; k++){
+						if(block){
+							DestroyBlock(block);
+						}
+
+						block = CreateBlock(Utils.RandomEnum<Block.Type>(1));
+						SetBlockPosition(block, row, j, Block.MoveType.Instant);
+
+						if(FindLargeGroups().Count == numGroups){
+//							Debug.Log("Found solution");
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
 
 	Block CreateBlock(Block.Type type){
 		GameObject blockObject = GameObject.Instantiate(blockPrefab);
@@ -32,30 +82,14 @@ public class Board : MonoBehaviour {
 		return block;
 	}
 
-	void SetBlockPosition(Block block, int row, int col, bool firstMove = false){
-		Block.MoveType moveType = Block.MoveType.None;
-		if(firstMove){
-			moveType = Block.MoveType.Fast;
-		}
-
-		block.SetLocation(row, col, moveType);
-		blocks[row, col] = block;
+	void DestroyBlock(Block block){
+		GameObject.Destroy(block.gameObject);
+		blocks[block.row, block.col] = null;
 	}
 
-	void Start () {
-		blocks = new Block[height, width];
-
-		transform.localPosition += new Vector3(.5f - width/2.0f, .5f - height/2.0f, 0);
-
-		for(int i = 0; i < height; i++){
-			for(int j = 0; j < width; j++){
-				Block block = CreateBlock(Utils.RandomEnum<Block.Type>(1));
-				SetBlockPosition(block, i, j);
-			}
-		}
-
-		midLine.transform.localScale = new Vector3(width, .02f, 1);
-		midLine.transform.localPosition = new Vector3(width/2, height/2 - .5f, 0);
+	void SetBlockPosition(Block block, int row, int col, Block.MoveType moveType = Block.MoveType.None){
+		block.SetLocation(row, col, moveType);
+		blocks[row, col] = block;
 	}
 
 	public class Group {
@@ -84,8 +118,7 @@ public class Board : MonoBehaviour {
 		}
 	}
 
-	void RemoveConnectedBlocks(){
-
+	List<Group> FindGroups(){
 		List<Group> groups = new List<Group>();
 
 		foreach (Block block in blocks){
@@ -115,13 +148,34 @@ public class Board : MonoBehaviour {
 			}
 		}
 
+		return groups;
+	}
+
+	List<Group> FindLargeGroups(){
+		List<Group> groups = FindGroups();
+		List<Group> largeGroups = new List<Group>();
+
 		foreach(Group group in groups){
 			if(group.size >= 3){
-//				Debug.Log("Found a group of " + group.size + " (" + group.blocks[0].type.ToString() + ")");
-				foreach(Block block in group.blocks){
-					GameObject.Destroy(block.gameObject);
-					blocks[block.row, block.col] = null;
-				}
+				largeGroups.Add(group);
+			}
+		}
+
+		return largeGroups;
+	}
+
+//	bool HasConnectedBlocks(){
+//		List<Group> groups = FindConnectedBlocks();
+//		return groups.Count > 0;
+//	}
+
+	void RemoveConnectedBlocks(){
+		List<Group> groups = FindLargeGroups();
+
+		foreach(Group group in groups){
+//			Debug.Log("Found a group of " + group.size + " (" + group.blocks[0].type.ToString() + ")");
+			foreach(Block block in group.blocks){
+				DestroyBlock(block);
 			}
 		}
 			
@@ -211,17 +265,14 @@ public class Board : MonoBehaviour {
 			} else {
 				// TODO
 			}
-			SetBlockPosition(block, targetRow, targetColumn, true);
-		}
-	}
-
-	void Update () {
-		if(Input.GetKeyDown(KeyCode.P)){
-			PrintBoard();
+			SetBlockPosition(block, targetRow, targetColumn, Block.MoveType.Fast);
 		}
 	}
 
 	void LateUpdate(){
+		if(Input.GetKeyDown(KeyCode.P)){
+			PrintBoard();
+		}
 
 		if(delayDropTime <= 0){
 			

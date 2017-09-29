@@ -6,11 +6,18 @@ public class PlayerControls : MonoBehaviour {
 
 	int keyboardDir = 1;
 
-	public GameObject targetIndicator;
+	public ColumnSelector columnSelector;
 	int targetColumn;
 
 	void Start () {
 		targetColumn = Board.instance.width / 2;
+	}
+
+	Block.Type FeedBlock(){
+		Block.Type type = columnSelector.GetBlockType();
+		Block.Type nextType = BlockFeed.instance.PopNextBlock();
+		columnSelector.SetBlockType(nextType);
+		return type;
 	}
 
 	void CheckBoardInput(){
@@ -29,24 +36,26 @@ public class PlayerControls : MonoBehaviour {
 		targetColumn = Mathf.Clamp(targetColumn, 0, Board.instance.width-1);
 			
 		if(throwing) {
-			Block.Type type = UpcomingBlocks.instance.PopNextBlock();
+			Block.Type type = FeedBlock();
 			Board.instance.ThrowBlock(type, targetColumn, dir);
+
+			Game.instance.CheckForFailure();
 		}
 	}
 	
 	void Update () {
 		if(Input.GetKeyDown(KeyCode.Alpha1)){
-			UpcomingBlocks.instance.CheatNextBlockType(Block.Type.Red);
+			columnSelector.SetBlockType(Block.Type.Red);
 		} else if(Input.GetKeyDown(KeyCode.Alpha2)){
-			UpcomingBlocks.instance.CheatNextBlockType(Block.Type.Green);
+			columnSelector.SetBlockType(Block.Type.Green);
 		} else if(Input.GetKeyDown(KeyCode.Alpha3)){
-			UpcomingBlocks.instance.CheatNextBlockType(Block.Type.Blue);
+			columnSelector.SetBlockType(Block.Type.Blue);
 		}
 
 		CheckBoardInput();
 
-		Vector3 tp = targetIndicator.transform.localPosition;
+		Vector3 tp = columnSelector.transform.localPosition;
 		tp.x = targetColumn;
-		targetIndicator.transform.localPosition = tp;
+		columnSelector.transform.localPosition = tp;
 	}
 }

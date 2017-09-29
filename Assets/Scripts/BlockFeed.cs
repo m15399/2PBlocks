@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class UpcomingBlocks : MonoBehaviour {
+public class BlockFeed : MonoBehaviour {
 
-	public static UpcomingBlocks instance {
+	public static BlockFeed instance {
 		get; set;
 	}
 
@@ -14,12 +14,12 @@ public class UpcomingBlocks : MonoBehaviour {
 
 	Block[] blocks;
 
-	UpcomingBlocks(){
+	BlockFeed(){
 		instance = this;
 	}
 
 	void Start () {
-		transform.position = new Vector3(Board.instance.width/2 + 1.5f, -Board.instance.height/2);
+		transform.position = new Vector3(Board.instance.width/2 + 1.5f, transform.position.y, 0);
 
 		blocks = new Block[numBlocks];
 
@@ -44,14 +44,11 @@ public class UpcomingBlocks : MonoBehaviour {
 		return blocks[0].type;
 	}
 
-	public void CheatNextBlockType(Block.Type type){
-		blocks[0].SetType(type);
-	}
-
 	Block CreateBlock(Block.Type type){
 		GameObject blockObject = GameObject.Instantiate(blockPrefab);
 		Block block = blockObject.GetComponent<Block>();
 		block.transform.parent = transform;
+		block.transform.localScale = new Vector3(1, 1, 1);
 
 		block.SetLocation(numBlocks, 0, Block.MoveType.Instant);
 		block.SetType(type);
@@ -64,9 +61,9 @@ public class UpcomingBlocks : MonoBehaviour {
 		for(int i = 0; i < numBlocks; i++){
 			blocks[i].SetLocation(i, 0, Block.MoveType.Fast);
 		}
-		for(int i = 1; i < numBlocks; i++){
+		for(int i = 0; i < numBlocks; i++){
 			blocks[i].Dim();
 		}
-		blocks[0].Undim();
+		// blocks[0].Undim();
 	}
 }
