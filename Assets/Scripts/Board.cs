@@ -16,20 +16,18 @@ public class Board : MonoBehaviour {
 
 	float delayDropTime = 0;
 
-	Block[,] blocks;
+	private Block[,] blocks;
 
 	Board(){
 		instance = this;
 	}
 		
 	void Start () {
-		blocks = new Block[height, width];
-
 		transform.localPosition += new Vector3(.5f - width/2.0f, .5f - height/2.0f, 0);
-
 		midLine.transform.localScale = new Vector3(width, .02f, 1);
 		midLine.transform.localPosition = new Vector3(width/2, height/2 - .5f, 0);
 
+		blocks = new Block[height, width];
 		Populate();
 	}
 
@@ -83,19 +81,30 @@ public class Board : MonoBehaviour {
 	}
 
 	void DestroyBlock(Block block){
-		GameObject.Destroy(block.gameObject);
-		blocks[block.row, block.col] = null;
+		if(block){
+			GameObject.Destroy(block.gameObject);
+			if(OnBoard(block)){
+				blocks[block.row, block.col] = null;
+			}
+		}
 	}
 
 	void SetBlockPosition(Block block, int row, int col, Block.MoveType moveType = Block.MoveType.None){
-		block.SetLocation(row, col, moveType);
+		if(block){
+			if(OnBoard(block)){
+				blocks[block.row, block.col] = null;
+			}
+			block.SetLocation(row, col, moveType);
+		}
 		blocks[row, col] = block;
 	}
 
+	bool OnBoard(Block block){
+		return block && block.row >= 0 && block.row < height && block.col >= 0 && block.col < width;
+	}
+
 	public class Group {
-
 		public int size = 0;
-
 		public List<Block> blocks;
 
 		public Group(Block firstBlock){
@@ -133,9 +142,9 @@ public class Board : MonoBehaviour {
 				Block current = blocks[i, j];
 				if(current){
 					if(i > 0){
-						Block upper = blocks[i - 1, j];
-						if(upper && current.type == upper.type){
-							upper.group.Merge(current.group);
+						Block lower = blocks[i - 1, j];
+						if(lower && current.type == lower.type){
+							lower.group.Merge(current.group);
 						}
 					}
 					if(j > 0){
@@ -163,11 +172,6 @@ public class Board : MonoBehaviour {
 
 		return largeGroups;
 	}
-
-//	bool HasConnectedBlocks(){
-//		List<Group> groups = FindConnectedBlocks();
-//		return groups.Count > 0;
-//	}
 
 	void RemoveConnectedBlocks(){
 		List<Group> groups = FindLargeGroups();
@@ -225,23 +229,6 @@ public class Board : MonoBehaviour {
 		delayDropTime = .5f;
 	}
 
-	void PrintBoard(){
-		string result = "";
-		for(int i = height-1; i >= 0; i--){
-			for(int j = 0; j < width; j++){
-				Block block = blocks[i, j];
-				if(block){
-					int type = (int) block.type;
-					result += type;
-				} else {
-					result += '_';
-				}
-			}
-			result += "\n";
-		}
-		Debug.Log(result);
-	}
-
 	public void ThrowBlock(Block.Type type, int targetColumn, int dir){
 		int targetRow = -1;
 		int midHeight = height/2;
@@ -269,11 +256,44 @@ public class Board : MonoBehaviour {
 		}
 	}
 
+	public void SpawnBlock(Block.Type type, int targetColumn, int dir){
+		int midHeight = height/2;
+
+		int originRow = midHeight;
+		int targetRow = midHeight;
+
+		if(dir < 0){
+			targetRow--;
+
+			DestroyBlock(blocks[0, targetColumn]);
+			for(int i = 1; i <= targetRow; i++){
+				SetBlockPosition(blocks[i, targetColumn], i - 1, targetColumn);
+			}
+		} else {
+			originRow--;
+
+			// TODO
+			Debug.Log("Not impl");
+		}
+
+		Block newBlock = CreateBlock(type);
+		SetBlockPosition(newBlock, targetRow, targetColumn);
+
+		Game.instance.CheckForFailure();
+
+	}
+
 	void LateUpdate(){
 		if(Input.GetKeyDown(KeyCode.P)){
 			PrintBoard();
 		}
 
+		if(Input.GetKeyDown(KeyCode.T)){
+			SpawnBlock(Utils.RandomEnum<Block.Type>(1), 0, -1);
+		}
+
+		// Drop if delay is up, and no blocks are moving
+		//
 		if(delayDropTime <= 0){
 			
 			bool blocksMoving = false;
@@ -285,11 +305,28 @@ public class Board : MonoBehaviour {
 			}
 
 			if(!blocksMoving){
-				RemoveConnectedBlocks();
+				 RemoveConnectedBlocks();
 			}
 
 		} else {
 			delayDropTime -= Time.deltaTime;
 		}
+	}
+
+	void PrintBoard(){
+		string result = "";
+		for(int i = height-1; i >= 0; i--){
+			for(int j = 0; j < width; j++){
+				Block block = blocks[i, j];
+				if(block){
+					int type = (int) block.type;
+					result += type;
+				} else {
+					result += '_';
+				}
+			}
+			result += "\n";
+		}
+		Debug.Log(result);
 	}
 }

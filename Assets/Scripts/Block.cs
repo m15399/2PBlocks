@@ -12,7 +12,8 @@ public class Block : MonoBehaviour {
 	}
 
 	public enum MoveType {
-		None,
+		None,    // No opinion (keep previous or default)
+		Default,
 		Fast,
 		Instant
 	}
@@ -23,7 +24,7 @@ public class Block : MonoBehaviour {
 	public Type type;
 	public Board.Group group;
 
-	public int row, col;
+	public int row = -1, col = -1;
 	Vector3 targetPos;
 	public bool moving = true;
 	MoveType moveType = MoveType.None;
@@ -45,10 +46,16 @@ public class Block : MonoBehaviour {
 		this.row = row;
 		this.col = col;
 		targetPos = new Vector3(col, row, 0);
-		this.moveType = moveType;
+
+		// None means keep previous
+		//
+		if(moveType != MoveType.None){
+			this.moveType = moveType;
+		}
 
 		if(moveType == MoveType.Instant){
 			transform.localPosition = targetPos;
+			moveType = MoveType.Default;
 		}
 	}
 
@@ -101,5 +108,11 @@ public class Block : MonoBehaviour {
 		}
 
 		transform.localPosition = Vector3.MoveTowards(transform.localPosition, targetPos, speed * Time.deltaTime);
+
+		// If resting, switch to default move type
+		//
+		if(moveType != MoveType.Default && (transform.localPosition - targetPos).magnitude < .001){
+			moveType = MoveType.Default;
+		}
 	}
 }
