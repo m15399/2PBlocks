@@ -4,6 +4,9 @@ using UnityEngine;
 
 public class Block : MonoBehaviour {
 
+	public const byte DimAlpha = 180;
+	public const byte FullAlpha = 255;
+
 	public enum Type {
 		None,
 		Red,
@@ -24,12 +27,17 @@ public class Block : MonoBehaviour {
 	public Type type;
 	public Board.Group group;
 
+	public bool onBoard = false;
 	public int row = -1, col = -1;
 	Vector3 targetPos;
 	public bool moving = true;
 	MoveType moveType = MoveType.None;
 
 	byte alpha = 255;
+	float alphaCurr = 255;
+	float alphaRate = 255 * 4;
+	byte targetAlpha = 255;
+
 
 	void Start () {
 		mainSprite = spriteObject.GetComponent<SpriteRenderer>();
@@ -42,31 +50,38 @@ public class Block : MonoBehaviour {
 		UpdateVisual();
 	}
 
-	public void SetLocation(int row, int col, MoveType moveType = MoveType.None){
+	public void SetLocation(int row, int col, MoveType desiredMoveType = MoveType.None){
 		this.row = row;
 		this.col = col;
 		targetPos = new Vector3(col, row, 0);
 
 		// None means keep previous
 		//
-		if(moveType != MoveType.None){
-			this.moveType = moveType;
+		if(desiredMoveType != MoveType.None){
+			moveType = desiredMoveType;
 		}
 
-		if(moveType == MoveType.Instant){
+		if(desiredMoveType == MoveType.Instant){
 			transform.localPosition = targetPos;
 			moveType = MoveType.Default;
 		}
 	}
 
-	public void Dim(){
-		alpha = 180;
-		UpdateVisual();
+	public void SetAlpha(byte a){
+		alphaCurr = a;
+		targetAlpha = a;
+
+		if(alpha != a){
+			alpha = a;
+			UpdateVisual();
+		}
 	}
 
-	public void Undim(){
-		alpha = 255;
-		UpdateVisual();
+	public void SetTargetAlpha(byte target, float rate = 0){
+		if(rate != 0){
+			alphaRate = rate;
+		}
+		targetAlpha = target;
 	}
 
 	void UpdateVisual(){
@@ -113,6 +128,15 @@ public class Block : MonoBehaviour {
 		//
 		if(moveType != MoveType.Default && (transform.localPosition - targetPos).magnitude < .001){
 			moveType = MoveType.Default;
+		}
+
+		// Alpha
+		// 
+		alphaCurr = Mathf.MoveTowards(alphaCurr, (float) targetAlpha, alphaRate * Time.deltaTime);
+		byte a = (byte) alphaCurr;
+		if(a != alpha){
+			alpha = a;
+			UpdateVisual();
 		}
 	}
 }

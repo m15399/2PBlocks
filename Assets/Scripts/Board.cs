@@ -95,12 +95,21 @@ public class Board : MonoBehaviour {
 				blocks[block.row, block.col] = null;
 			}
 			block.SetLocation(row, col, moveType);
+			block.onBoard = true;
 		}
 		blocks[row, col] = block;
 	}
 
+	void RemoveFromBoard(Block block){
+		if(block && OnBoard(block)){
+			block.onBoard = false;
+			blocks[block.row, block.col] = null;
+		}
+	}
+
 	bool OnBoard(Block block){
-		return block && block.row >= 0 && block.row < height && block.col >= 0 && block.col < width;
+//		return block && block.row >= 0 && block.row < height && block.col >= 0 && block.col < width;
+		return block && block.onBoard;
 	}
 
 	public class Group {
@@ -277,6 +286,10 @@ public class Board : MonoBehaviour {
 		}
 
 		Block newBlock = CreateBlock(type);
+
+		newBlock.SetAlpha(0);
+		newBlock.SetTargetAlpha(Block.FullAlpha);
+		newBlock.SetLocation(originRow, targetColumn, Block.MoveType.Instant);
 		SetBlockPosition(newBlock, targetRow, targetColumn);
 
 		Game.instance.CheckForFailure();

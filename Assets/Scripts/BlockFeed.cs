@@ -52,7 +52,7 @@ public class BlockFeed : MonoBehaviour {
 
 		block.SetLocation(numBlocks, 0, Block.MoveType.Instant);
 		block.SetType(type);
-		block.Dim();
+		block.SetAlpha(Block.DimAlpha);
 
 		return block;
 	}
@@ -60,9 +60,7 @@ public class BlockFeed : MonoBehaviour {
 	void Update () {
 		for(int i = 0; i < numBlocks; i++){
 			blocks[i].SetLocation(i, 0, Block.MoveType.Fast);
-		}
-		for(int i = 0; i < numBlocks; i++){
-			blocks[i].Dim();
+			blocks[i].SetAlpha(Block.DimAlpha);
 		}
 		// blocks[0].Undim();
 	}
