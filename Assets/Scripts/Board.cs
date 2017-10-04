@@ -29,6 +29,8 @@ public class Board : MonoBehaviour {
 
 		blocks = new Block[height, width];
 		Populate();
+
+//		SpawnBlockRandomly();
 	}
 
 	public bool InFailureState(){
@@ -293,12 +295,25 @@ public class Board : MonoBehaviour {
 		SetBlockPosition(newBlock, targetRow, targetColumn);
 
 		Game.instance.CheckForFailure();
+	}
 
+	void SpawnBlockRandomly(){
+		// Need to predict if this will just help the player...
+
+		for(int i = 0; i < width; i++){
+			SpawnBlock(Utils.RandomEnum<Block.Type>(1), i, -1);
+		}
+
+//		SpawnBlock(Utils.RandomEnum<Block.Type>(1), Random.Range(0, width - 1), -1);
+		Invoke("SpawnBlockRandomly", 4.5f);
 	}
 
 	void LateUpdate(){
 		if(Input.GetKeyDown(KeyCode.P)){
-			PrintBoard();
+//			PrintBoard();
+			var lb = new LogicalBoard(blocks);
+			lb.SpawnBlockRow();
+			lb.PrintBoard();
 		}
 
 		if(Input.GetKeyDown(KeyCode.T)){
