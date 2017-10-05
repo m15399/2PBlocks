@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
+using BoardEvents;
 
 public class LogicalBoard {
 
@@ -14,6 +15,9 @@ public class LogicalBoard {
 	public BlockData[,] blocks;
 
 	List<BlockData[,]> undos = new List<BlockData[,]>();
+	List<int> eventCountsForUndos = new List<int>();
+
+	List<BoardEvent> events = new List<BoardEvent>();
 
 	public LogicalBoard (Block[,] blocksIn) {
 		height = blocksIn.GetLength(0);
@@ -44,15 +48,40 @@ public class LogicalBoard {
 		Array.Copy(board.blocks, blocks, blocks.Length);
 	}
 
+	public void ResetEvents(){
+		events = new List<BoardEvent>();
+	}
+
+	public void ApplyEvents(Board board){
+		Debug.Log("Applying events: " + events.Count);
+		foreach(BoardEvent e in events){
+			board.ApplyEventBase(e);
+		}
+		ResetEvents();
+	}
+
+	void PushEvent(BoardEvent e){
+		events.Add(e);
+	}
+
 	void PushState(){
 		BlockData[,] blocksCopy = new BlockData[height, width];
 		Array.Copy(blocks, blocksCopy, blocks.Length);
 		undos.Add(blocksCopy);
+
+		eventCountsForUndos.Add(events.Count);
 	}
 
 	public void Undo(){
 		Array.Copy(undos[undos.Count - 1], blocks, blocks.Length);
 		undos.RemoveAt(undos.Count - 1);
+
+		int nCounts = eventCountsForUndos.Count;
+		int eventMark = eventCountsForUndos[nCounts - 1];
+		eventCountsForUndos.RemoveAt(nCounts - 1);
+
+//		Debug.Log("Undo is removing " + (events.Count - eventMark) + " events");
+		events.RemoveRange(eventMark, events.Count - eventMark);
 	}
 
 	BlockData CreateBlock(){
@@ -61,44 +90,44 @@ public class LogicalBoard {
 		return block;
 	}
 
-	public bool InFailureState(){
-		for(int i = 0; i < width; i++){
-			if(blocks[0, i] != null || blocks[height-1, i] != null)
-				return true;
-		}
-		return false;
-	}
-
-	public void Populate(){
-		int rowsToPopulate = 8;
-		for(int dir = -1; dir <= 1; dir += 2){
-			for(int i = 0; i < rowsToPopulate / 2; i++){
-				int row = height / 2 + dir * i;
-				if(dir == -1)
-					row--;
-
-				for(int j = 0; j < width; j++){
-
-					int numGroups = FindLargeGroups().Count;
-					BlockData block = null;
-
-					for(int k = 0; k < 100; k++){
-						if(block != null){
-							DestroyBlock(block);
-						}
-
-						block = CreateBlock();
-						SetBlockPosition(block, row, j);
-
-						if(FindLargeGroups().Count == numGroups){
-							//							Debug.Log("Found solution");
-							break;
-						}
-					}
-				}
-			}
-		}
-	}
+//	public bool InFailureState(){
+//		for(int i = 0; i < width; i++){
+//			if(blocks[0, i] != null || blocks[height-1, i] != null)
+//				return true;
+//		}
+//		return false;
+//	}
+//
+//	public void Populate(){
+//		int rowsToPopulate = 8;
+//		for(int dir = -1; dir <= 1; dir += 2){
+//			for(int i = 0; i < rowsToPopulate / 2; i++){
+//				int row = height / 2 + dir * i;
+//				if(dir == -1)
+//					row--;
+//
+//				for(int j = 0; j < width; j++){
+//
+//					int numGroups = FindLargeGroups().Count;
+//					BlockData block = null;
+//
+//					for(int k = 0; k < 100; k++){
+//						if(block != null){
+//							DestroyBlock(block);
+//						}
+//
+//						block = CreateBlock();
+//						SetBlockPosition(block, row, j);
+//
+//						if(FindLargeGroups().Count == numGroups){
+//							//							Debug.Log("Found solution");
+//							break;
+//						}
+//					}
+//				}
+//			}
+//		}
+//	}
 
 	public void DestroyBlock(BlockData block){
 		if(OnBoard(block)){
@@ -109,6 +138,13 @@ public class LogicalBoard {
 	public void SetBlockPosition(BlockData block, int row, int col){
 		if(OnBoard(block)){
 			blocks[block.row, block.col] = null;
+
+			MoveEvent e = new MoveEvent();
+			e.row = block.row;
+			e.col = block.col;
+			e.row2 = row;
+			e.col2 = col;
+			PushEvent(e);
 		}
 
 		if(block != null){
@@ -218,61 +254,61 @@ public class LogicalBoard {
 		return FindLargeGroups().Count;
 	}
 
-	void RemoveConnectedBlocks(){
-		List<Group> groups = FindLargeGroups();
-
-		foreach(Group group in groups){
-			//			Debug.Log("Found a group of " + group.size + " (" + group.blocks[0].type.ToString() + ")");
-			foreach(BlockData block in group.blocks){
-				DestroyBlock(block);
-			}
-		}
-
-		SlideBlocksDown();
-	}
-
-	void SlideBlockDown(BlockData block, int row, int col, int dir){
-		int midHeight = height/2;
-
-		if(block == null)
-			return;
-
-		if(dir < 0){
-			if(row > midHeight){
-				if (blocks[row - 1, col] == null){
-					blocks[row, col] = null;
-					SetBlockPosition(block, row - 1, col);
-
-					SlideBlockDown(block, row - 1, col, dir);
-				}
-			}
-		} else {
-			if(row < midHeight - 1){
-				if (blocks[row + 1, col] == null){
-					blocks[row, col] = null;
-					SetBlockPosition(block, row + 1, col);
-
-					SlideBlockDown(block, row + 1, col, dir);
-				}
-			}
-		}
-	}
-
-	void SlideBlocksDown(){
-		int midHeight = height / 2;
-
-		for(int i = midHeight - 2; i >= 0; i--){
-			for(int j = 0; j < width; j++){
-				SlideBlockDown(blocks[i, j], i, j, 1);
-			}
-		}
-
-		for(int i = midHeight + 1; i < height; i++){
-			for(int j = 0; j < width; j++){
-				SlideBlockDown(blocks[i, j], i, j, -1);
-			}
-		}
-	}
+//	void RemoveConnectedBlocks(){
+//		List<Group> groups = FindLargeGroups();
+//
+//		foreach(Group group in groups){
+//			//			Debug.Log("Found a group of " + group.size + " (" + group.blocks[0].type.ToString() + ")");
+//			foreach(BlockData block in group.blocks){
+//				DestroyBlock(block);
+//			}
+//		}
+//
+//		SlideBlocksDown();
+//	}
+//
+//	void SlideBlockDown(BlockData block, int row, int col, int dir){
+//		int midHeight = height/2;
+//
+//		if(block == null)
+//			return;
+//
+//		if(dir < 0){
+//			if(row > midHeight){
+//				if (blocks[row - 1, col] == null){
+//					blocks[row, col] = null;
+//					SetBlockPosition(block, row - 1, col);
+//
+//					SlideBlockDown(block, row - 1, col, dir);
+//				}
+//			}
+//		} else {
+//			if(row < midHeight - 1){
+//				if (blocks[row + 1, col] == null){
+//					blocks[row, col] = null;
+//					SetBlockPosition(block, row + 1, col);
+//
+//					SlideBlockDown(block, row + 1, col, dir);
+//				}
+//			}
+//		}
+//	}
+//
+//	void SlideBlocksDown(){
+//		int midHeight = height / 2;
+//
+//		for(int i = midHeight - 2; i >= 0; i--){
+//			for(int j = 0; j < width; j++){
+//				SlideBlockDown(blocks[i, j], i, j, 1);
+//			}
+//		}
+//
+//		for(int i = midHeight + 1; i < height; i++){
+//			for(int j = 0; j < width; j++){
+//				SlideBlockDown(blocks[i, j], i, j, -1);
+//			}
+//		}
+//	}
 
 	bool PushBlock(BlockData block, int rowDir, int colDir){
 		if(block == null)
@@ -296,74 +332,52 @@ public class LogicalBoard {
 		}
 	}
 
-	public void ThrowBlock(Block.Type type, int targetColumn, int dir){
-		int targetRow = -1;
-		int midHeight = height/2;
-
-		if(dir > 0){
-			targetRow = midHeight - 1;
-			for(int i = 0; i < midHeight; i++){
-				if(blocks[i, targetColumn] != null){
-					targetRow = i-1;
-					break;
-				}
-			}
-		} else {
-			// TODO
-		}
-
-		if(targetRow >= 0 && targetRow < height){
-			BlockData block = new BlockData();
-			block.type = type;
-			SetBlockPosition(block, targetRow, targetColumn);
-		}
-	}
-
-	public BlockData SpawnBlock(Block.Type type, int targetColumn, int dir){
-		PushState();
-
-		int midHeight = height/2;
-
-		int originRow = midHeight;
-		int targetRow = midHeight;
-
-		if(dir < 0){
-			targetRow--;
-
-			DestroyBlock(blocks[0, targetColumn]);
-			for(int i = 1; i <= targetRow; i++){
-				SetBlockPosition(blocks[i, targetColumn], i - 1, targetColumn);
-			}
-		} else {
-			originRow--;
-
-			// TODO
-			Debug.Log("Not impl");
-		}
-
-		BlockData newBlock = CreateBlock();
-		SetBlockPosition(newBlock, targetRow, targetColumn);
-
-		return newBlock;
-	}
+//	public void ThrowBlock(Block.Type type, int targetColumn, int dir){
+//		int targetRow = -1;
+//		int midHeight = height/2;
+//
+//		if(dir > 0){
+//			targetRow = midHeight - 1;
+//			for(int i = 0; i < midHeight; i++){
+//				if(blocks[i, targetColumn] != null){
+//					targetRow = i-1;
+//					break;
+//				}
+//			}
+//		} else {
+//			// TODO
+//		}
+//
+//		if(targetRow >= 0 && targetRow < height){
+//			BlockData block = new BlockData();
+//			block.type = type;
+//			SetBlockPosition(block, targetRow, targetColumn);
+//		}
+//	}
 
 	public void SpawnBlockRow(){
 
 		for(int i = 0; i < width; i++){
 			PushBlock(GetBlock(height/2 - 1, i), -1, 0);
 		}
-
+			
 		for(int i = 0; i < width; i++){
 			int numGroups = NumLargeGroups();
 
 			for(int j = 10; j >= 0; j--){
+				// TODO this is leaving us with more states than we started with - need to pop the state or something
 				PushState();
 
+				// TODO move to its a Spawn method
 				BlockData block = CreateBlock();
 				SetBlockPosition(block, height/2 - 1, i);
+				SpawnEvent e = new SpawnEvent();
+				e.row = block.row;
+				e.col = block.col;
+				e.type = block.type;
+				PushEvent(e);
 
 				if(j == 0 || NumLargeGroups() == numGroups){
-					Debug.Log("Found a good one at " + i);
 					break;
 				}
 
@@ -378,6 +392,8 @@ public class LogicalBoard {
 			for(int j = 0; j < width; j++){
 				BlockData block = blocks[i, j];
 				if(block != null){
+					Debug.Assert(block.row == i);
+					Debug.Assert(block.col == j);
 					int type = (int) block.type;
 					result += type;
 				} else {

@@ -1,6 +1,9 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using BoardEvents;
+using System.Reflection;
+using System;
 
 public class Board : MonoBehaviour {
 
@@ -32,6 +35,26 @@ public class Board : MonoBehaviour {
 
 //		SpawnBlockRandomly();
 	}
+
+	// // //
+
+	public void ApplyEventBase(BoardEvent e){ 
+		Type type = e.GetType();
+		MethodInfo method = typeof(Board).GetMethod("ApplyEvent", new Type[] { type });
+		method.Invoke(this, new object[] { e });
+	}
+
+	public void ApplyEvent(SpawnEvent e){
+		Block block = CreateBlock(e.type);
+		SetBlockPosition(block, e.row, e.col, Block.MoveType.None);
+	}
+
+	public void ApplyEvent(MoveEvent e){
+		SetBlockPosition(blocks[e.row, e.col], e.row2, e.col2, Block.MoveType.None);
+	}
+
+
+	// // //
 
 	public bool InFailureState(){
 		for(int i = 0; i < width; i++){
@@ -98,6 +121,13 @@ public class Board : MonoBehaviour {
 			}
 			block.SetLocation(row, col, moveType);
 			block.onBoard = true;
+		}
+
+		Block existing = blocks[row, col];
+		if(existing != null){
+			existing.row = -1;
+			existing.col = -1;
+			existing.onBoard = false;
 		}
 		blocks[row, col] = block;
 	}
@@ -310,10 +340,10 @@ public class Board : MonoBehaviour {
 
 	void LateUpdate(){
 		if(Input.GetKeyDown(KeyCode.P)){
-//			PrintBoard();
 			var lb = new LogicalBoard(blocks);
 			lb.SpawnBlockRow();
 			lb.PrintBoard();
+			lb.ApplyEvents(this);
 		}
 
 		if(Input.GetKeyDown(KeyCode.T)){
