@@ -25,7 +25,6 @@ public class Block : MonoBehaviour {
 	SpriteRenderer mainSprite;
 
 	public Type type;
-	public Board.Group group;
 
 	public bool onBoard = false;
 	public int row = -1, col = -1;

@@ -31,12 +31,15 @@ public class Board : MonoBehaviour {
 		midLine.transform.localPosition = new Vector3(width/2, height/2 - .5f, 0);
 
 		blocks = new Block[height, width];
-		Populate();
 
-//		SpawnBlockRandomly();
+		LogicalBoard lb = new LogicalBoard(blocks);
+		lb.Populate();
+		lb.ApplyEvents(this);
 	}
 
-	// // //
+	//
+	// Events
+	//
 
 	public void ApplyEventBase(BoardEvent e){ 
 		Type type = e.GetType();
@@ -53,46 +56,10 @@ public class Board : MonoBehaviour {
 		SetBlockPosition(blocks[e.row, e.col], e.row2, e.col2, Block.MoveType.None);
 	}
 
-
-	// // //
+	// // // //
 
 	public bool InFailureState(){
-		for(int i = 0; i < width; i++){
-			if(blocks[0, i] != null || blocks[height-1, i] != null)
-				return true;
-		}
-		return false;
-	}
-
-	void Populate(){
-		int rowsToPopulate = 8;
-		for(int dir = -1; dir <= 1; dir += 2){
-			for(int i = 0; i < rowsToPopulate / 2; i++){
-				int row = height / 2 + dir * i;
-				if(dir == -1)
-					row--;
-
-				for(int j = 0; j < width; j++){
-
-					int numGroups = FindLargeGroups().Count;
-					Block block = null;
-
-					for(int k = 0; k < 100; k++){
-						if(block){
-							DestroyBlock(block);
-						}
-
-						block = CreateBlock(Utils.RandomEnum<Block.Type>(1));
-						SetBlockPosition(block, row, j, Block.MoveType.Instant);
-
-						if(FindLargeGroups().Count == numGroups){
-//							Debug.Log("Found solution");
-							break;
-						}
-					}
-				}
-			}
-		}
+		return new LogicalBoard(blocks).InFailureState();
 	}
 
 	Block CreateBlock(Block.Type type){
@@ -143,88 +110,23 @@ public class Board : MonoBehaviour {
 //		return block && block.row >= 0 && block.row < height && block.col >= 0 && block.col < width;
 		return block && block.onBoard;
 	}
+//
+//	void RemoveConnectedBlocks(){
+//		List<Group> groups = FindLargeGroups();
+//
+//		foreach(Group group in groups){
+////			Debug.Log("Found a group of " + group.size + " (" + group.blocks[0].type.ToString() + ")");
+//			foreach(Block block in group.blocks){
+//				DestroyBlock(block);
+//			}
+//		}
+//			
+//		SlideBlocksDown();
+//	}
 
-	public class Group {
-		public int size = 0;
-		public List<Block> blocks;
-
-		public Group(Block firstBlock){
-			blocks = new List<Block>();
-			blocks.Add(firstBlock);
-			firstBlock.group = this;
-			size = 1;
-		}
-
-		public void Merge(Group group){
-			List<Block> tempList = group.blocks;
-			group.blocks = new List<Block>();
-			group.size = 0;
-
-			foreach(Block block in tempList){
-				block.group = this;
-				blocks.Add(block);
-				size++;
-			}
-		}
-	}
-
-	List<Group> FindGroups(){
-		List<Group> groups = new List<Group>();
-
-		foreach (Block block in blocks){
-			if(block){
-				block.group = new Board.Group(block);
-				groups.Add(block.group);
-			}
-		}
-
-		for(int i = 0; i < height; i++){
-			for(int j = 0; j < width; j++){
-				Block current = blocks[i, j];
-				if(current){
-					if(i > 0){
-						Block lower = blocks[i - 1, j];
-						if(lower && current.type == lower.type){
-							lower.group.Merge(current.group);
-						}
-					}
-					if(j > 0){
-						Block left = blocks[i, j - 1];
-						if(left && current.type == left.type){
-							left.group.Merge(current.group);
-						}
-					}
-				}
-			}
-		}
-
-		return groups;
-	}
-
-	List<Group> FindLargeGroups(){
-		List<Group> groups = FindGroups();
-		List<Group> largeGroups = new List<Group>();
-
-		foreach(Group group in groups){
-			if(group.size >= 3){
-				largeGroups.Add(group);
-			}
-		}
-
-		return largeGroups;
-	}
-
-	void RemoveConnectedBlocks(){
-		List<Group> groups = FindLargeGroups();
-
-		foreach(Group group in groups){
-//			Debug.Log("Found a group of " + group.size + " (" + group.blocks[0].type.ToString() + ")");
-			foreach(Block block in group.blocks){
-				DestroyBlock(block);
-			}
-		}
-			
-		SlideBlocksDown();
+	int NumLargeGroups(){
+		LogicalBoard lb = new LogicalBoard(blocks);
+		return lb.NumLargeGroups();
 	}
 
 	void SlideBlock(Block block, int midHeight, int row, int col, int dir){
@@ -297,47 +199,6 @@ public class Board : MonoBehaviour {
 		}
 	}
 
-	public void SpawnBlock(Block.Type type, int targetColumn, int dir){
-		int midHeight = height/2;
-
-		int originRow = midHeight;
-		int targetRow = midHeight;
-
-		if(dir < 0){
-			targetRow--;
-
-			DestroyBlock(blocks[0, targetColumn]);
-			for(int i = 1; i <= targetRow; i++){
-				SetBlockPosition(blocks[i, targetColumn], i - 1, targetColumn);
-			}
-		} else {
-			originRow--;
-
-			// TODO
-			Debug.Log("Not impl");
-		}
-
-		Block newBlock = CreateBlock(type);
-
-		newBlock.SetAlpha(0);
-		newBlock.SetTargetAlpha(Block.FullAlpha);
-		newBlock.SetLocation(originRow, targetColumn, Block.MoveType.Instant);
-		SetBlockPosition(newBlock, targetRow, targetColumn);
-
-		Game.instance.CheckForFailure();
-	}
-
-	void SpawnBlockRandomly(){
-		// Need to predict if this will just help the player...
-
-		for(int i = 0; i < width; i++){
-			SpawnBlock(Utils.RandomEnum<Block.Type>(1), i, -1);
-		}
-
-//		SpawnBlock(Utils.RandomEnum<Block.Type>(1), Random.Range(0, width - 1), -1);
-		Invoke("SpawnBlockRandomly", 4.5f);
-	}
-
 	void LateUpdate(){
 		if(Input.GetKeyDown(KeyCode.P)){
 			var lb = new LogicalBoard(blocks);
@@ -347,7 +208,7 @@ public class Board : MonoBehaviour {
 		}
 
 		if(Input.GetKeyDown(KeyCode.T)){
-			SpawnBlock(Utils.RandomEnum<Block.Type>(1), 0, -1);
+		
 		}
 
 		// Drop if delay is up, and no blocks are moving
@@ -363,7 +224,7 @@ public class Board : MonoBehaviour {
 			}
 
 			if(!blocksMoving){
-				 RemoveConnectedBlocks();
+//				 RemoveConnectedBlocks();
 			}
 
 		} else {
@@ -371,20 +232,4 @@ public class Board : MonoBehaviour {
 		}
 	}
 
-	void PrintBoard(){
-		string result = "";
-		for(int i = height-1; i >= 0; i--){
-			for(int j = 0; j < width; j++){
-				Block block = blocks[i, j];
-				if(block){
-					int type = (int) block.type;
-					result += type;
-				} else {
-					result += '_';
-				}
-			}
-			result += "\n";
-		}
-		Debug.Log(result);
-	}
 }
